@@ -335,15 +335,15 @@ const App = () => {
                     Preencha abaixo e entraremos em contato em até 2 horas.
                   </p>
 
-                  <form onSubmit={handleSubmit}>
+                  <form onSubmit={handleSubmit} autoComplete="off">
                     <div className="form-group">
                       <label>Seu nome completo</label>
-                      <input type="text" name="name" placeholder="Como prefere ser chamado?" required value={form.name} onChange={handleChange} />
+                      <input type="text" name="name" placeholder="Como prefere ser chamado?" required value={form.name} onChange={handleChange} autoComplete="off" />
                     </div>
 
                     <div className="form-group">
                       <label>WhatsApp / Telefone</label>
-                      <input type="tel" name="phone" placeholder="(00) 00000-0000" required value={form.phone} onChange={handleChange} />
+                      <input type="tel" name="phone" placeholder="(00) 00000-0000" required value={form.phone} onChange={handleChange} autoComplete="off" />
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', margin: '32px 0' }}>

@@ -99,6 +99,7 @@ export const FlickeringGrid = ({
     let lastTime = 0;
     const animate = (time) => {
       if (!isInView || !gridParams) {
+        lastTime = time;
         animationFrameId = requestAnimationFrame(animate);
         return;
       }

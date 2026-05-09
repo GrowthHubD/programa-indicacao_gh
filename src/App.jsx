@@ -50,29 +50,29 @@ const App = () => {
   useEffect(() => {
     const el = proofRef.current;
     if (!el) return;
+    let rafId = 0;
     const obs = new IntersectionObserver(([entry]) => {
       if (!entry.isIntersecting || animated.current) return;
       animated.current = true;
-      STATS.forEach((stat, i) => {
-        const duration = 1200;
-        const steps = 60;
-        const interval = duration / steps;
-        const isDecimal = !Number.isInteger(stat.value);
-        let step = 0;
-        const timer = setInterval(() => {
-          step++;
-          const progress = step / steps;
-          const eased = 1 - Math.pow(1 - progress, 3);
-          const current = isDecimal
-            ? parseFloat((eased * stat.value).toFixed(1))
-            : Math.round(eased * stat.value);
-          setCounts(prev => { const next = [...prev]; next[i] = current; return next; });
-          if (step >= steps) clearInterval(timer);
-        }, interval);
-      });
+      const duration = 1200;
+      const start = performance.now();
+      const tick = (now) => {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        setCounts(STATS.map(stat =>
+          Number.isInteger(stat.value)
+            ? Math.round(eased * stat.value)
+            : parseFloat((eased * stat.value).toFixed(1))
+        ));
+        if (progress < 1) rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
     }, { threshold: 0.4 });
     obs.observe(el);
-    return () => obs.disconnect();
+    return () => {
+      obs.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
+    };
   }, []);
 
   useEffect(() => {

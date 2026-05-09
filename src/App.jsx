@@ -9,6 +9,72 @@ import { useTheme } from './modules/theme/hooks/useTheme.js';
 const INDICADOR = import.meta.env.VITE_INDICADOR || 'template';
 const WEBHOOK_URL = 'https://webhook.gabrielporceli.com.br/webhook/iNDICACAO';
 
+const PROOF_STATS = [
+  { prefix: '',  value: 94,  suffix: '%',  label: 'clientes satisfeitos' },
+  { prefix: '',  value: 3,   suffix: 'x',  label: 'crescimento médio' },
+  { prefix: '+', value: 200, suffix: '',   label: 'projetos entregues' },
+  { prefix: '',  value: 4.9, suffix: '★',  label: 'avaliação média' },
+];
+
+const ProofBar = () => {
+  const [counts, setCounts] = useState(() => PROOF_STATS.map(() => 0));
+  const proofRef = useRef(null);
+  const animated = useRef(false);
+
+  useEffect(() => {
+    const el = proofRef.current;
+    if (!el) return;
+    let rafId = 0;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting || animated.current) return;
+      animated.current = true;
+      const duration = 1800;
+      const start = performance.now();
+      const tick = (now) => {
+        const t = Math.min((now - start) / duration, 1);
+        const eased = t < 0.5
+          ? 4 * t * t * t
+          : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        setCounts(PROOF_STATS.map(stat =>
+          Number.isInteger(stat.value)
+            ? Math.round(eased * stat.value)
+            : parseFloat((eased * stat.value).toFixed(1))
+        ));
+        if (t < 1) rafId = requestAnimationFrame(tick);
+      };
+      rafId = requestAnimationFrame(tick);
+    }, { threshold: 0.4 });
+    obs.observe(el);
+    return () => {
+      obs.disconnect();
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  return (
+    <div ref={proofRef} className="container proof-bar" style={{ padding: '0' }}>
+      {PROOF_STATS.map((stat, i) => (
+        <div
+          key={i}
+          className="proof-item reveal"
+          data-delay={String(i + 1)}
+          style={{
+            flex: 1,
+            padding: '32px 48px',
+            borderRight: i < 3 ? '0.5px solid var(--border-hairline)' : 'none',
+            textAlign: 'center',
+          }}
+        >
+          <div className="proof-number">
+            {stat.prefix}{counts[i]}{stat.suffix}
+          </div>
+          <div className="proof-label">{stat.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const App = () => {
   const [form, setForm] = useState({ name: '', phone: '', email: '', segment: '', need: '' });
   const [submitted, setSubmitted] = useState(false);
@@ -27,16 +93,6 @@ const App = () => {
     'Outro',
   ];
 
-  const STATS = [
-    { prefix: '',  value: 94,  suffix: '%',  label: 'clientes satisfeitos' },
-    { prefix: '',  value: 3,   suffix: 'x',  label: 'crescimento médio' },
-    { prefix: '+', value: 200, suffix: '',   label: 'projetos entregues' },
-    { prefix: '',  value: 4.9, suffix: '★',  label: 'avaliação média' },
-  ];
-  const [counts, setCounts] = useState(STATS.map(() => 0));
-  const proofRef = useRef(null);
-  const animated = useRef(false);
-
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -45,34 +101,6 @@ const App = () => {
     };
     document.addEventListener('mousedown', handler, { passive: true });
     return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  useEffect(() => {
-    const el = proofRef.current;
-    if (!el) return;
-    let rafId = 0;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting || animated.current) return;
-      animated.current = true;
-      const duration = 1200;
-      const start = performance.now();
-      const tick = (now) => {
-        const progress = Math.min((now - start) / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        setCounts(STATS.map(stat =>
-          Number.isInteger(stat.value)
-            ? Math.round(eased * stat.value)
-            : parseFloat((eased * stat.value).toFixed(1))
-        ));
-        if (progress < 1) rafId = requestAnimationFrame(tick);
-      };
-      rafId = requestAnimationFrame(tick);
-    }, { threshold: 0.4 });
-    obs.observe(el);
-    return () => {
-      obs.disconnect();
-      if (rafId) cancelAnimationFrame(rafId);
-    };
   }, []);
 
   useEffect(() => {
@@ -188,31 +216,12 @@ const App = () => {
       </section>
 
       {/* PROOF BAR */}
-      <section ref={proofRef} style={{
+      <section style={{
         borderTop: '0.5px solid var(--border-hairline)',
         borderBottom: '0.5px solid var(--border-hairline)',
         marginBottom: '80px'
       }}>
-        <div className="container proof-bar" style={{ padding: '0' }}>
-          {STATS.map((stat, i) => (
-            <div
-              key={i}
-              className="proof-item reveal"
-              data-delay={String(i + 1)}
-              style={{
-                flex: 1,
-                padding: '32px 48px',
-                borderRight: i < 3 ? '0.5px solid var(--border-hairline)' : 'none',
-                textAlign: 'center',
-              }}
-            >
-              <div className="proof-number">
-                {stat.prefix}{counts[i]}{stat.suffix}
-              </div>
-              <div className="proof-label">{stat.label}</div>
-            </div>
-          ))}
-        </div>
+        <ProofBar />
       </section>
 
       {/* MAIN CONTENT GRID */}

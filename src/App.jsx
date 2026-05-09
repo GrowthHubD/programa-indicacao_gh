@@ -6,7 +6,7 @@ import { FlickeringGridDemo } from './components/ui/demo.jsx';
 import ThemeToggle from './modules/theme/components/ThemeToggle.jsx';
 import { useTheme } from './modules/theme/hooks/useTheme.js';
 
-const INDICADOR = 'template';
+const INDICADOR = import.meta.env.VITE_INDICADOR || 'template';
 const WEBHOOK_URL = 'https://webhook.gabrielporceli.com.br/webhook/iNDICACAO';
 
 const App = () => {

@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "build:carlos": "vite build --mode carlos",
+    "build:marcos": "vite build --mode marcos",
+    "build:damascena": "vite build --mode damascena",
     "lint": "eslint .",
     "preview": "vite preview"
   },

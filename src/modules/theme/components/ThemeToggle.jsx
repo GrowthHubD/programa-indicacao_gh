@@ -1,4 +1,5 @@
 import { useTheme } from '../hooks/useTheme.js';
+import { useLanguage } from '../../i18n/hooks/useLanguage.js';
 
 const SunIcon = () => (
   <svg className="theme-toggle__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -22,6 +23,7 @@ const MoonIcon = () => (
 
 export default function ThemeToggle() {
   const { theme, toggle } = useTheme();
+  const { t } = useLanguage();
   const isDark = theme === 'dark';
 
   return (
@@ -29,8 +31,8 @@ export default function ThemeToggle() {
       type="button"
       onClick={toggle}
       className="theme-toggle"
-      aria-label={isDark ? 'Ativar tema claro' : 'Ativar tema escuro'}
-      title={isDark ? 'Tema claro' : 'Tema escuro'}
+      aria-label={isDark ? t('theme.switchToLight') : t('theme.switchToDark')}
+      title={isDark ? t('theme.lightLabel') : t('theme.darkLabel')}
     >
       {isDark ? <SunIcon /> : <MoonIcon />}
     </button>

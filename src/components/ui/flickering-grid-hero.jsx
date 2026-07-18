@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
+
+// Redraws only the cells that actually flickered this frame instead of
+// clearing + repainting the whole grid every tick — a full-grid redraw of a
+// full-viewport canvas at 60fps was saturating the main thread and made
+// everything below the hero (proof-bar counters, scroll reveals) stutter.
+const MAX_DPR = 2;
 
 export const FlickeringGrid = ({
   squareSize = 4,
@@ -13,7 +19,8 @@ export const FlickeringGrid = ({
 }) => {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
-  const [isInView, setIsInView] = useState(true);
+  const isInViewRef = useRef(true);
+  const isTabVisibleRef = useRef(true);
 
   const memoizedColor = useMemo(() => {
     const toRGBA = (color) => {
@@ -32,7 +39,7 @@ export const FlickeringGrid = ({
 
   const setupCanvas = useCallback(
     (canvas, width, height) => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
       canvas.width = width * dpr;
       canvas.height = height * dpr;
       const cols = Math.floor(width / (squareSize + gridGap));
@@ -46,34 +53,47 @@ export const FlickeringGrid = ({
     [squareSize, gridGap, maxOpacity],
   );
 
-  const updateSquares = useCallback(
-    (squares, deltaTime) => {
-      for (let i = 0; i < squares.length; i++) {
-        if (Math.random() < flickerChance * deltaTime) {
-          squares[i] = Math.random() * maxOpacity;
-        }
-      }
+  const drawCell = useCallback(
+    (ctx, i, j, rows, squares, dpr) => {
+      const opacity = squares[i * rows + j];
+      const x = i * (squareSize + gridGap) * dpr;
+      const y = j * (squareSize + gridGap) * dpr;
+      const size = squareSize * dpr;
+      ctx.clearRect(x, y, size, size);
+      ctx.fillStyle = `${memoizedColor}${opacity})`;
+      ctx.fillRect(x, y, size, size);
     },
-    [flickerChance, maxOpacity],
+    [memoizedColor, squareSize, gridGap],
   );
 
-  const drawGrid = useCallback(
+  const drawAllCells = useCallback(
     (ctx, width, height, cols, rows, squares, dpr) => {
       ctx.clearRect(0, 0, width, height);
       for (let i = 0; i < cols; i++) {
         for (let j = 0; j < rows; j++) {
-          const opacity = squares[i * rows + j];
-          ctx.fillStyle = `${memoizedColor}${opacity})`;
-          ctx.fillRect(
-            i * (squareSize + gridGap) * dpr,
-            j * (squareSize + gridGap) * dpr,
-            squareSize * dpr,
-            squareSize * dpr,
-          );
+          drawCell(ctx, i, j, rows, squares, dpr);
         }
       }
     },
-    [memoizedColor, squareSize, gridGap],
+    [drawCell],
+  );
+
+  // Mutates squares in place for cells whose flicker roll hits, redrawing
+  // only those cells instead of the full grid.
+  const updateAndDrawChangedCells = useCallback(
+    (ctx, cols, rows, squares, dpr, deltaTime) => {
+      const chance = flickerChance * deltaTime;
+      for (let i = 0; i < cols; i++) {
+        for (let j = 0; j < rows; j++) {
+          if (Math.random() < chance) {
+            const idx = i * rows + j;
+            squares[idx] = Math.random() * maxOpacity;
+            drawCell(ctx, i, j, rows, squares, dpr);
+          }
+        }
+      }
+    },
+    [flickerChance, maxOpacity, drawCell],
   );
 
   useEffect(() => {
@@ -92,21 +112,9 @@ export const FlickeringGrid = ({
       const newHeight = height || container.clientHeight;
       if (newWidth === 0 || newHeight === 0) return;
       gridParams = setupCanvas(canvas, newWidth, newHeight);
-    };
-
-    updateCanvasSize();
-
-    let lastTime = 0;
-    const animate = (time) => {
-      if (!isInView || !gridParams) {
-        lastTime = time;
-        animationFrameId = requestAnimationFrame(animate);
-        return;
-      }
-      const deltaTime = (time - lastTime) / 1000;
-      lastTime = time;
-      updateSquares(gridParams.squares, deltaTime);
-      drawGrid(
+      // canvas.width/height assignment above clears the canvas, so paint
+      // the freshly-seeded random state once before switching to dirty draws.
+      drawAllCells(
         ctx,
         canvas.width,
         canvas.height,
@@ -114,6 +122,27 @@ export const FlickeringGrid = ({
         gridParams.rows,
         gridParams.squares,
         gridParams.dpr,
+      );
+    };
+
+    updateCanvasSize();
+
+    let lastTime = 0;
+    const animate = (time) => {
+      if (!isInViewRef.current || !isTabVisibleRef.current || !gridParams) {
+        lastTime = time;
+        animationFrameId = requestAnimationFrame(animate);
+        return;
+      }
+      const deltaTime = (time - lastTime) / 1000;
+      lastTime = time;
+      updateAndDrawChangedCells(
+        ctx,
+        gridParams.cols,
+        gridParams.rows,
+        gridParams.squares,
+        gridParams.dpr,
+        deltaTime,
       );
       animationFrameId = requestAnimationFrame(animate);
     };
@@ -126,8 +155,13 @@ export const FlickeringGrid = ({
 
     window.addEventListener("resize", handleResize);
 
+    const handleVisibilityChange = () => {
+      isTabVisibleRef.current = !document.hidden;
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     const intersectionObserver = new IntersectionObserver(
-      ([entry]) => setIsInView(entry.isIntersecting),
+      ([entry]) => { isInViewRef.current = entry.isIntersecting; },
       { threshold: 0 },
     );
 
@@ -138,9 +172,10 @@ export const FlickeringGrid = ({
       cancelAnimationFrame(animationFrameId);
       clearTimeout(resizeTimeout);
       window.removeEventListener("resize", handleResize);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       intersectionObserver.disconnect();
     };
-  }, [setupCanvas, updateSquares, drawGrid, width, height, isInView]);
+  }, [setupCanvas, drawAllCells, updateAndDrawChangedCells, width, height]);
 
   return (
     <div

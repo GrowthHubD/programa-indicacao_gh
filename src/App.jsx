@@ -81,7 +81,6 @@ const App = () => {
   const [form, setForm] = useState({ name: '', phone: '', email: '', segment: '', need: '' });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [sendError, setSendError] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const { theme } = useTheme();
@@ -124,7 +123,6 @@ const App = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setSendError(false);
 
     const payload = {
       indicador: INDICADOR,
@@ -142,8 +140,8 @@ const App = () => {
       localStorage.setItem('vpi_backlog', JSON.stringify(backlog));
     } catch (_) {}
 
-    // Up to 3 retries
-    let success = false;
+    // Up to 3 retries — best-effort delivery, but the lead already has a local
+    // backup, so the UI always confirms success and never surfaces a failure.
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const res = await fetch(SEND_ENDPOINT, {
@@ -151,17 +149,13 @@ const App = () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-        if (res.ok) { success = true; break; }
+        if (res.ok) break;
       } catch (_) {}
       if (attempt < 2) await new Promise(r => setTimeout(r, 1500));
     }
 
     setLoading(false);
-    if (success) {
-      setSubmitted(true);
-    } else {
-      setSendError(true);
-    }
+    setSubmitted(true);
   };
 
   return (
@@ -445,16 +439,6 @@ const App = () => {
                         style={{ resize: 'none' }}
                       />
                     </div>
-
-                    {sendError && (
-                      <div style={{ background: 'rgba(220,60,60,0.1)', border: '1px solid rgba(220,60,60,0.25)', borderRadius: '8px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                        <span style={{ fontSize: '16px', flexShrink: 0 }}>⚠️</span>
-                        <div>
-                          <p style={{ fontSize: '13px', color: '#F4A0A0', fontWeight: 500, marginBottom: '2px' }}>{t('form.errorTitle')}</p>
-                          <p style={{ fontSize: '12px', color: '#A08080', lineHeight: 1.5 }}>{t('form.errorBody')}</p>
-                        </div>
-                      </div>
-                    )}
 
                     <button type="submit" className="btn-primary btn-cta" disabled={loading}>
                       {loading ? (

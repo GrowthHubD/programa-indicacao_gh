@@ -1,0 +1,16 @@
+# Growth Hub — Programa de Indicação
+
+> Página de acesso exclusivo por indicação da Growth Hub. Visitantes chegam aqui indicados
+> por um cliente e preenchem um formulário de contato para receber uma análise diagnóstica
+> com condições exclusivas de indicado.
+
+## Conteúdo da página
+
+- Formulário de contato (nome, WhatsApp, segmento de negócio, necessidade)
+- Explicação de como funciona o programa de indicação em 3 passos
+- Depoimento de cliente
+- Estatísticas de resultados da Growth Hub
+
+## Contato
+
+- Site institucional: https://methodgrowthhub.com.br
